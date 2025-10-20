@@ -1,0 +1,249 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Hospital Multi-Agent System Infrastructure
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    Description: Environment name
+
+  BedrockModelId:
+    Type: String
+    Default: anthropic.claude-3-5-sonnet-20240620-v1:0
+    Description: Bedrock model ID for agents
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        PATIENTS_TABLE: !Ref PatientsTable
+        APPOINTMENTS_TABLE: !Ref AppointmentsTable
+        MEMORY_TABLE: !Ref MemoryTable
+        AWS_REGION: !Ref AWS::Region
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
+
+Resources:
+  # DynamoDB Tables
+  PatientsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub hospital-patients-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: patient_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: patient_id
+          KeyType: HASH
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: HospitalMultiAgent
+
+  AppointmentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub hospital-appointments-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: appointment_id
+          AttributeType: S
+        - AttributeName: patient_id
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: appointment_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: PatientIndex
+          KeySchema:
+            - AttributeName: patient_id
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: HospitalMultiAgent
+
+  MemoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub hospital-memory-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: memory_id
+          AttributeType: S
+        - AttributeName: patient_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: memory_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: PatientMemoryIndex
+          KeySchema:
+            - AttributeName: patient_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: HospitalMultiAgent
+
+  # IAM Role for Lambda Functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt PatientsTable.Arn
+                  - !GetAtt AppointmentsTable.Arn
+                  - !GetAtt MemoryTable.Arn
+                  - !Sub '${PatientsTable.Arn}/index/*'
+                  - !Sub '${AppointmentsTable.Arn}/index/*'
+                  - !Sub '${MemoryTable.Arn}/index/*'
+        - PolicyName: BedrockAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: '*'
+
+  # Lambda Functions for Tools
+  TriageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub hospital-triage-${Environment}
+      CodeUri: ../tools/
+      Handler: triage_tools.search_symptoms
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Description: Triage agent tool for symptom analysis
+
+  BookingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub hospital-booking-${Environment}
+      CodeUri: ../tools/
+      Handler: booking_tools.book_appointment
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Description: Booking agent tool for appointments
+
+  ReminderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub hospital-reminder-${Environment}
+      CodeUri: ../tools/
+      Handler: reminder_tools.send_notification
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Description: Reminder agent tool for notifications
+
+  # API Gateway for External Access
+  HospitalApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub hospital-api-${Environment}
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+
+  # S3 Bucket for Configs and Logs
+  ConfigBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub hospital-config-${AWS::AccountId}-${Environment}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: HospitalMultiAgent
+
+  # CloudWatch Log Groups
+  AgentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/bedrock/hospital-agents-${Environment}
+      RetentionInDays: 7
+
+Outputs:
+  PatientsTableName:
+    Description: DynamoDB table for patients
+    Value: !Ref PatientsTable
+    Export:
+      Name: !Sub ${AWS::StackName}-PatientsTable
+
+  AppointmentsTableName:
+    Description: DynamoDB table for appointments
+    Value: !Ref AppointmentsTable
+    Export:
+      Name: !Sub ${AWS::StackName}-AppointmentsTable
+
+  MemoryTableName:
+    Description: DynamoDB table for memory
+    Value: !Ref MemoryTable
+    Export:
+      Name: !Sub ${AWS::StackName}-MemoryTable
+
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${HospitalApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+    Export:
+      Name: !Sub ${AWS::StackName}-ApiEndpoint
+
+  ConfigBucketName:
+    Description: S3 bucket for configurations
+    Value: !Ref ConfigBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-ConfigBucket
+
+  LambdaExecutionRoleArn:
+    Description: IAM role for Lambda functions
+    Value: !GetAtt LambdaExecutionRole.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-LambdaRole
+

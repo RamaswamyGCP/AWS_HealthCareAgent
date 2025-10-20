@@ -1,0 +1,100 @@
+# Hospital Multi-Agent Configuration
+
+# Agent Configuration
+agents:
+  supervisor:
+    name: "HospitalSupervisor"
+    model_id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    instruction: |
+      You are a hospital AI coordinator. Route patient queries to specialized agents:
+      - For symptoms, medical concerns, or triage: Route to TriageAgent
+      - For appointments, bookings, or scheduling: Route to BookingAgent
+      - For reminders, follow-ups, or notifications: Route to ReminderAgent
+      
+      Always check memory for patient history before routing.
+    
+  triage:
+    name: "TriageAgent"
+    model_id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    instruction: |
+      You analyze patient symptoms and provide triage recommendations.
+      - Check patient history for allergies, conditions
+      - Assess urgency: Low, Medium, High, Emergency
+      - Suggest next steps (home care, appointment, ER)
+      - Never provide medical diagnosis, only triage guidance
+    tools:
+      - search_symptoms
+      - get_patient_history
+  
+  booking:
+    name: "BookingAgent"
+    model_id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    instruction: |
+      You handle appointment scheduling and management.
+      - Check available slots
+      - Book appointments
+      - Confirm with patient
+      - Store in memory for future reference
+    tools:
+      - check_availability
+      - book_appointment
+      - get_appointments
+  
+  reminder:
+    name: "ReminderAgent"
+    model_id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+    instruction: |
+      You manage follow-ups and reminders.
+      - Send appointment reminders
+      - Schedule follow-up checks
+      - Track medication reminders
+    tools:
+      - send_notification
+      - schedule_reminder
+
+# Memory Configuration
+memory:
+  short_term:
+    strategy: "session_summary"
+    namespace: "patient_session"
+    retention_hours: 24
+  
+  long_term:
+    strategy: "semantic"
+    embedding_model: "amazon.titan-embed-text-v1"
+    namespace: "patient_history"
+
+# Agent-to-Agent Collaboration
+agent_to_agent:
+  enabled: true
+  protocol: "bedrock-agentcore"
+
+# Observability
+observability:
+  cloudwatch:
+    enabled: true
+    log_level: "INFO"
+  
+  metrics:
+    enabled: true
+    namespace: "HospitalMultiAgent"
+
+# Hospital Settings
+hospital:
+  name: "AWS Health Center"
+  departments:
+    - "Emergency"
+    - "Pediatrics"
+    - "General Medicine"
+    - "Cardiology"
+  
+  hours:
+    weekday: "08:00-18:00"
+    weekend: "09:00-14:00"
+  
+  urgency_levels:
+    - "Low"
+    - "Medium"
+    - "High"
+    - "Emergency"
+

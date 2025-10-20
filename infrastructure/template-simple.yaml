@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Hospital Multi-Agent System - Simple Infrastructure (DynamoDB only)
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - prod
+    Description: Environment name
+
+Resources:
+  # DynamoDB Tables
+  PatientsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub hospital-patients-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: patient_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: patient_id
+          KeyType: HASH
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: HospitalMultiAgent
+
+  AppointmentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub hospital-appointments-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: appointment_id
+          AttributeType: S
+        - AttributeName: patient_id
+          AttributeType: S
+        - AttributeName: date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: appointment_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: PatientIndex
+          KeySchema:
+            - AttributeName: patient_id
+              KeyType: HASH
+            - AttributeName: date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: HospitalMultiAgent
+
+  MemoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub hospital-memory-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: memory_id
+          AttributeType: S
+        - AttributeName: patient_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: memory_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: PatientMemoryIndex
+          KeySchema:
+            - AttributeName: patient_id
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: HospitalMultiAgent
+
+Outputs:
+  PatientsTableName:
+    Description: DynamoDB table for patients
+    Value: !Ref PatientsTable
+    Export:
+      Name: !Sub ${AWS::StackName}-PatientsTable
+
+  AppointmentsTableName:
+    Description: DynamoDB table for appointments
+    Value: !Ref AppointmentsTable
+    Export:
+      Name: !Sub ${AWS::StackName}-AppointmentsTable
+
+  MemoryTableName:
+    Description: DynamoDB table for memory
+    Value: !Ref MemoryTable
+    Export:
+      Name: !Sub ${AWS::StackName}-MemoryTable
+
+  Region:
+    Description: AWS Region
+    Value: !Ref AWS::Region
+
+

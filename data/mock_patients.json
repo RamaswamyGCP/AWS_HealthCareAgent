@@ -1,0 +1,118 @@
+[
+  {
+    "patient_id": "P12345",
+    "name": "Emma Johnson",
+    "date_of_birth": "2015-03-15",
+    "gender": "Female",
+    "contact": {
+      "email": "emma.parent@email.com",
+      "phone": "+1-555-0101"
+    },
+    "medical_history": {
+      "conditions": ["Asthma", "Seasonal Allergies"],
+      "allergies": ["Penicillin", "Peanuts"],
+      "medications": ["Albuterol inhaler", "Zyrtec"],
+      "blood_type": "O+",
+      "immunizations": ["DTaP", "MMR", "Varicella", "HPV"]
+    },
+    "insurance": {
+      "provider": "Blue Cross",
+      "policy_number": "BC-12345678"
+    },
+    "last_visit": "2024-09-15",
+    "primary_physician": "Dr. Sarah Johnson"
+  },
+  {
+    "patient_id": "P12346",
+    "name": "Michael Chen",
+    "date_of_birth": "1985-07-22",
+    "gender": "Male",
+    "contact": {
+      "email": "michael.chen@email.com",
+      "phone": "+1-555-0102"
+    },
+    "medical_history": {
+      "conditions": ["Type 2 Diabetes", "Hypertension"],
+      "allergies": ["Sulfa drugs"],
+      "medications": ["Metformin 500mg", "Lisinopril 10mg"],
+      "blood_type": "A+",
+      "immunizations": ["Flu vaccine 2024", "COVID-19 booster"]
+    },
+    "insurance": {
+      "provider": "Aetna",
+      "policy_number": "AET-87654321"
+    },
+    "last_visit": "2024-08-20",
+    "primary_physician": "Dr. Michael Chen"
+  },
+  {
+    "patient_id": "P12347",
+    "name": "Sarah Williams",
+    "date_of_birth": "1992-11-05",
+    "gender": "Female",
+    "contact": {
+      "email": "sarah.williams@email.com",
+      "phone": "+1-555-0103"
+    },
+    "medical_history": {
+      "conditions": [],
+      "allergies": [],
+      "medications": [],
+      "blood_type": "B+",
+      "immunizations": ["Flu vaccine 2024", "Tdap"]
+    },
+    "insurance": {
+      "provider": "UnitedHealthcare",
+      "policy_number": "UHC-11223344"
+    },
+    "last_visit": "2024-06-10",
+    "primary_physician": "Dr. Emily Rodriguez"
+  },
+  {
+    "patient_id": "P12348",
+    "name": "David Martinez",
+    "date_of_birth": "1978-04-18",
+    "gender": "Male",
+    "contact": {
+      "email": "david.martinez@email.com",
+      "phone": "+1-555-0104"
+    },
+    "medical_history": {
+      "conditions": ["Heart Disease", "High Cholesterol"],
+      "allergies": ["Aspirin"],
+      "medications": ["Atorvastatin 40mg", "Carvedilol 25mg"],
+      "blood_type": "AB+",
+      "immunizations": ["Flu vaccine 2024", "Pneumonia vaccine"]
+    },
+    "insurance": {
+      "provider": "Cigna",
+      "policy_number": "CIG-55667788"
+    },
+    "last_visit": "2024-09-28",
+    "primary_physician": "Dr. Emily Rodriguez"
+  },
+  {
+    "patient_id": "P12349",
+    "name": "Olivia Brown",
+    "date_of_birth": "2018-12-20",
+    "gender": "Female",
+    "contact": {
+      "email": "olivia.parent@email.com",
+      "phone": "+1-555-0105"
+    },
+    "medical_history": {
+      "conditions": [],
+      "allergies": ["Latex"],
+      "medications": [],
+      "blood_type": "O-",
+      "immunizations": ["DTaP", "IPV", "Hib", "PCV", "MMR"]
+    },
+    "insurance": {
+      "provider": "Kaiser Permanente",
+      "policy_number": "KP-99887766"
+    },
+    "last_visit": "2024-10-01",
+    "primary_physician": "Dr. Sarah Johnson"
+  }
+]
+
