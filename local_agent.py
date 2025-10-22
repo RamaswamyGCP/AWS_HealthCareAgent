@@ -10,20 +10,58 @@ from typing import Dict, Any
 import boto3
 import time
 from botocore.exceptions import ClientError
+from pathlib import Path
+
+# Try to import streamlit for secrets support
+try:
+    import streamlit as st
+    HAS_STREAMLIT = True
+except ImportError:
+    HAS_STREAMLIT = False
 
 # Load mock patient data
 def load_mock_data():
     """Load mock patient data from JSON"""
-    with open('data/mock_patients.json', 'r') as f:
-        return {p['patient_id']: p for p in json.load(f)}
+    # Handle both local and Streamlit Cloud paths
+    base_path = Path(__file__).parent
+    mock_data_path = base_path / 'data' / 'mock_patients.json'
+    
+    try:
+        with open(mock_data_path, 'r') as f:
+            return {p['patient_id']: p for p in json.load(f)}
+    except FileNotFoundError:
+        # Return default patients if file not found
+        return {
+            'P12345': {'patient_id': 'P12345', 'name': 'Emma Johnson', 'medical_history': {'allergies': ['Penicillin', 'Peanuts'], 'conditions': []}},
+            'P12346': {'patient_id': 'P12346', 'name': 'Michael Chen', 'medical_history': {'allergies': [], 'conditions': ['Diabetes']}},
+            'P12347': {'patient_id': 'P12347', 'name': 'Sarah Williams', 'medical_history': {'allergies': [], 'conditions': []}}
+        }
 
 # Initialize
 PATIENTS = load_mock_data()
 APPOINTMENTS = {}
 MEMORY = {}
 
-# Initialize Bedrock client
-bedrock_runtime = boto3.client('bedrock-runtime', region_name='us-east-1')
+# Initialize Bedrock client with credentials from Streamlit secrets or environment
+def get_bedrock_client():
+    """Get Bedrock client with credentials from Streamlit secrets or environment"""
+    if HAS_STREAMLIT and hasattr(st, 'secrets'):
+        # Use Streamlit secrets (for Streamlit Cloud)
+        try:
+            bedrock_runtime = boto3.client(
+                'bedrock-runtime',
+                region_name=st.secrets.get('AWS_REGION', 'us-east-1'),
+                aws_access_key_id=st.secrets.get('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=st.secrets.get('AWS_SECRET_ACCESS_KEY')
+            )
+            return bedrock_runtime
+        except Exception as e:
+            print(f"Could not load from Streamlit secrets: {e}")
+    
+    # Fall back to default credentials (for local use)
+    return boto3.client('bedrock-runtime', region_name=os.getenv('AWS_REGION', 'us-east-1'))
+
+bedrock_runtime = get_bedrock_client()
 
 def call_claude(prompt: str, max_retries: int = 5) -> str:
     """Call Claude via Bedrock with exponential backoff retry logic"""

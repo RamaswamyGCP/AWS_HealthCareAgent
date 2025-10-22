@@ -231,3 +231,4 @@ echo -e "${YELLOW}To terminate the instance:${NC}"
 echo -e "   ${GREEN}aws ec2 terminate-instances --instance-ids ${INSTANCE_ID} --region ${AWS_REGION}${NC}"
 echo ""
 
+

@@ -10,7 +10,11 @@ import os
 from datetime import datetime
 import time
 import sys
-sys.path.insert(0, '/Users/ramaswamy/Documents/AWSOpenHack/hospital-multi-agent')
+from pathlib import Path
+
+# Add parent directory to path (works locally and on Streamlit Cloud)
+parent_dir = Path(__file__).parent.parent
+sys.path.insert(0, str(parent_dir))
 
 # Import local agent for direct Bedrock integration
 try:
