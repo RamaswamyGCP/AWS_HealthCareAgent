@@ -530,15 +530,28 @@ if 'agent_stats' not in st.session_state:
 
 
 def call_agent_api(prompt: str, patient_id: str, local_mode: bool = True):
-    """Call the multi-agent system"""
+    """Call the multi-agent system with rate limiting protection"""
     
     # NEW: Direct Bedrock integration for live AI responses
     if BEDROCK_AVAILABLE:
         try:
             print(f"🔥 Calling live Bedrock LLM for patient {patient_id}...")
             
-            # Call the local_agent which uses Bedrock directly
+            # Add a small delay to prevent rapid-fire requests
+            time.sleep(0.5)
+            
+            # Call the local_agent which uses Bedrock directly (now has retry logic)
             result = handle_query(prompt, patient_id)
+            
+            # Check if result contains throttling message
+            if "high demand" in result.lower() or "rate limit" in result.lower():
+                return {
+                    "result": result,
+                    "patient_id": patient_id,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "status": "throttled",
+                    "bedrock": True
+                }
             
             # Update stats based on query type
             st.session_state.agent_stats['total_queries'] += 1
@@ -860,13 +873,10 @@ if user_input:
         "timestamp": datetime.now()
     })
     
-    # Show professional loading indicator
-    with st.spinner("🏥 Adira Healthcare AI is analyzing..."):
-        # Call agent API
+    # Show professional loading indicator with rate limit notice
+    with st.spinner("🏥 Adira Healthcare AI is analyzing... (This may take 5-30 seconds)"):
+        # Call agent API (now includes retry logic)
         response = call_agent_api(user_input, st.session_state.patient_id, local_mode)
-        
-        # Simulate processing time
-        time.sleep(1)
     
     # Add assistant response
     if response.get('status') == 'success':

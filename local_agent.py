@@ -8,6 +8,8 @@ import os
 from datetime import datetime
 from typing import Dict, Any
 import boto3
+import time
+from botocore.exceptions import ClientError
 
 # Load mock patient data
 def load_mock_data():
@@ -23,28 +25,49 @@ MEMORY = {}
 # Initialize Bedrock client
 bedrock_runtime = boto3.client('bedrock-runtime', region_name='us-east-1')
 
-def call_claude(prompt: str) -> str:
-    """Call Claude via Bedrock"""
-    try:
-        response = bedrock_runtime.invoke_model(
-            modelId='anthropic.claude-3-5-sonnet-20240620-v1:0',
-            body=json.dumps({
-                "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 2000,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ]
-            })
-        )
-        
-        result = json.loads(response['body'].read())
-        return result['content'][0]['text']
-    except Exception as e:
-        print(f"Bedrock API Error: {e}")
-        return f"Error calling Claude: {str(e)}"
+def call_claude(prompt: str, max_retries: int = 5) -> str:
+    """Call Claude via Bedrock with exponential backoff retry logic"""
+    
+    for attempt in range(max_retries):
+        try:
+            response = bedrock_runtime.invoke_model(
+                modelId='anthropic.claude-3-5-sonnet-20240620-v1:0',
+                body=json.dumps({
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 2000,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                })
+            )
+            
+            result = json.loads(response['body'].read())
+            return result['content'][0]['text']
+            
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', '')
+            
+            # Handle throttling with exponential backoff
+            if error_code == 'ThrottlingException':
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) + 1  # 1, 3, 7, 15, 31 seconds
+                    print(f"⚠️  Rate limited. Waiting {wait_time} seconds... (Attempt {attempt + 1}/{max_retries})")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    return "I apologize, but I'm experiencing high demand right now. Please wait 30 seconds and try again. This is a temporary AWS rate limit that will reset shortly."
+            else:
+                print(f"Bedrock API Error: {e}")
+                return f"I encountered an error: {str(e)}. Please try again in a moment."
+                
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            return f"An unexpected error occurred. Please try again."
+    
+    return "Service temporarily unavailable. Please wait 30 seconds and try again."
 
 def get_patient_context(patient_id: str) -> Dict[str, Any]:
     """Get patient context"""
