@@ -92,3 +92,4 @@ else
     streamlit run ui/streamlit_app.py --server.port 8501 --server.headless true
 fi
 
+
